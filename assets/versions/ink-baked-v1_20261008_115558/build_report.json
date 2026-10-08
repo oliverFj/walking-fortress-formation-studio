@@ -1,0 +1,27 @@
+{
+  "frames": 432,
+  "bodyAtlasSize": [
+    1024,
+    2048
+  ],
+  "pikeAtlasSize": [
+    1024,
+    2048
+  ],
+  "bodyTexelArea": 1139185,
+  "pikeTexelArea": 705267,
+  "largestBody": [
+    47,
+    79
+  ],
+  "largestPikeStrip": [
+    9,
+    188
+  ],
+  "sourceManifestsSHA256": {
+    "walk": "a49fc1cdcb3e2c1fc5eff162cdf949d0c930150feb723ecc9f2fd894070b08cf",
+    "idle": "ae50d8a7079e9570a54413c0f4c00fa3ba193cadcafdb1124742da7c51095e96"
+  },
+  "orderedOwnerMaskOperations": 757,
+  "geometrySource": "sprite-studio/web/pike.mjs:pikeGeometry"
+}

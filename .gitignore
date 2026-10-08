@@ -1,0 +1,15 @@
+# Python and local editor files
+__pycache__/
+*.py[cod]
+.venv/
+
+# Browser-check outputs and local scene files
+checks/*.png
+checks/*-report.json
+checks/*-study.json
+checks/invalid.json
+checks/relight-smoke/
+
+# Blender development run outputs; keep the scripts themselves
+tools/*.log
+tools/relight_smoke.png
