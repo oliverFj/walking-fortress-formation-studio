@@ -13,3 +13,12 @@ checks/relight-smoke/
 # Blender development run outputs; keep the scripts themselves
 tools/*.log
 tools/relight_smoke.png
+checks/v2models/
+
+# Audio extraction QA
+checks/boot-extraction.json
+
+# Library worker scratch data; complete version assets remain portable
+.library-jobs/
+checks/library-smoke/
+checks/library-*/

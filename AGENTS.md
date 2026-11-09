@@ -30,7 +30,7 @@ Read README.md, DEVELOPMENT.md and assets/README.md for the current scope and kn
 - Default style is `hatch`; explicit `solid` preserves filled ink shadows. Old saved lighting without a style adopts hatching. All stroke settings live in `scene.view.lighting` and normalize through lighting.mjs.
 - Stroke coordinates are billboard-local meters, anchored at the feet. Do not use gl_FragCoord: camera panning must not slide the pattern over the figure.
 - The normal mask and shared landscape sun remain authoritative for shadow placement. Shadow depth adds nested primary strokes at 4x/2x/1x hatchSpacing and perpendicular strokes past crossStart. Paper remains between strokes.
-- Defaults: hatchSpacing .12 m, hatchWidth .018 m, hatchAngle 45 degrees, crossStart .22. A lower crossStart introduces crossing strokes earlier.
+- Defaults: strength .82, threshold .37, ink black; hatchSpacing .021 m, hatchWidth .0125 m, hatchAngle 45 degrees, crossStart .05. A lower crossStart introduces crossing strokes earlier.
 - UI/normalization allow hatchSpacing down to .005 m (step .001 m) and hatchWidth down to .0005 m (step .0005 m). Display fractional centimeters accurately; keep saved small values on load.
 - Keep analytic area filtering for strokes and a one-pixel shadow-boundary filter. MSAA only covers geometry edges; it does not replace fragment-pattern antialiasing. Derivatives must be computed before discard or divergent coverage branches.
 - Run checks/hatching.test.cjs for procedural coverage/AA/pan invariance and checks/hatching-preview.cjs for real-sprite appearance. Solid pixel checks explicitly select style solid. Do not rerender Blender assets merely to change the hatch pattern.

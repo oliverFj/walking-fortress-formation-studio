@@ -23,7 +23,8 @@ def verify(path, partial=False):
     assert data['normal_encoding'] == 'RGB8-linear-signed'
     assert data['source_sha256'] == digest(Path(data['source_blend']))
     expected = sum(len(d['frames']) for c in data['clips'] for d in c['directions'])
-    assert expected == 432
+    assert expected > 0
+    assert len({c['name'] for c in data['clips']}) == len(data['clips'])
     expected_size = tuple(data['tile_size'])
     all_lengths, verified, skipped, top_normals = [], 0, 0, 0
     coverage_ratios=[]

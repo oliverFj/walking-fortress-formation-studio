@@ -6,10 +6,10 @@ const DEG = Math.PI / 180;
 const clamp = (value, lo, hi) => Math.max(lo, Math.min(hi, value));
 const finite = (value, fallback) => Number.isFinite(value) ? value : fallback;
 export const DEFAULT_LIGHTING = Object.freeze({
-  enabled: true, azimuth: 315, elevation: 45, strength: 0.85,
-  threshold: 0.52, softness: 0, inkColor: '#29271f',
-  style: 'hatch', hatchSpacing: 0.12, hatchWidth: 0.018,
-  hatchAngle: 45, crossStart: 0.22,
+  enabled: true, azimuth: 315, elevation: 45, strength: 0.82,
+  threshold: 0.37, softness: 0, inkColor: '#000000',
+  style: 'hatch', hatchSpacing: 0.021, hatchWidth: 0.0125,
+  hatchAngle: 45, crossStart: 0.05,
 });
 export function normalizeLighting(options = {}) {
   const v = options && typeof options === 'object' ? options : {};

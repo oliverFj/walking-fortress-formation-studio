@@ -39,7 +39,7 @@ test('invalid saved settings normalize to finite bounded values', () => {
   const lighting=normalizeLighting({azimuth:Infinity,elevation:900,strength:-2,threshold:5,softness:-1,inkColor:'red'});
   assert.equal(lighting.azimuth,315);assert.equal(lighting.elevation,90);
   assert.equal(lighting.strength,0);assert.equal(lighting.threshold,1);assert.equal(lighting.softness,0);
-  assert.equal(lighting.inkColor,'#29271f');
+  assert.equal(lighting.inkColor,'#000000');
 });
 
 test('old saved lighting adopts hatching while explicitly chosen solid fill survives a round trip', () => {

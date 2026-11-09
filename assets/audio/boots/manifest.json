@@ -1,0 +1,142 @@
+{
+  "source": {
+    "file": "530589__nox_sound__footsteps_boots_gritty_ground_gravel.wav",
+    "title": "Footsteps Boots Gritty Ground Gravel",
+    "author": "Nox_Sound",
+    "url": "https://freesound.org/people/Nox_Sound/sounds/530589/",
+    "license": "CC0 1.0",
+    "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "sha256": "b9ffa8bc54b00232800d78299f8862748a8aa61d1046ce37efe875eff98dd9d5",
+    "sampleRate": 48000,
+    "channels": 1,
+    "bitsPerSample": 24,
+    "duration": 11.433875
+  },
+  "sampleRate": 48000,
+  "channels": 1,
+  "bitsPerSample": 16,
+  "contactMethod": "First 2 ms RMS window above 0.02 FS in the primary landing attack; not the later gravel peak.",
+  "processing": "Isolate at the silent source gaps, retain gravel tails, 12 ms lead, 10 ms trailing silence, 2 ms input and 8 ms output fades; original gain preserved.",
+  "samples": [
+    {
+      "file": "step-01.wav",
+      "kind": "walk",
+      "contact": 0.01,
+      "sourceStart": 0.0,
+      "sourceEnd": 0.524438,
+      "sourceContact": 0.01,
+      "duration": 0.524438,
+      "peak": 0.188092,
+      "rms": 0.017737,
+      "impactRms": 0.055156
+    },
+    {
+      "file": "step-02.wav",
+      "kind": "walk",
+      "contact": 0.024,
+      "sourceStart": 1.000958,
+      "sourceEnd": 1.642917,
+      "sourceContact": 1.024958,
+      "duration": 0.641958,
+      "peak": 0.256776,
+      "rms": 0.01683,
+      "impactRms": 0.067365
+    },
+    {
+      "file": "step-03.wav",
+      "kind": "walk",
+      "contact": 0.024,
+      "sourceStart": 2.119438,
+      "sourceEnd": 2.828063,
+      "sourceContact": 2.143438,
+      "duration": 0.708625,
+      "peak": 0.256175,
+      "rms": 0.021085,
+      "impactRms": 0.116566
+    },
+    {
+      "file": "step-04.wav",
+      "kind": "walk",
+      "contact": 0.024,
+      "sourceStart": 3.304646,
+      "sourceEnd": 3.747,
+      "sourceContact": 3.328646,
+      "duration": 0.442354,
+      "peak": 0.225168,
+      "rms": 0.021899,
+      "impactRms": 0.097233
+    },
+    {
+      "file": "step-05.wav",
+      "kind": "walk",
+      "contact": 0.024,
+      "sourceStart": 4.223521,
+      "sourceEnd": 4.855313,
+      "sourceContact": 4.247521,
+      "duration": 0.631792,
+      "peak": 0.201028,
+      "rms": 0.017199,
+      "impactRms": 0.085816
+    },
+    {
+      "file": "step-06.wav",
+      "kind": "run",
+      "contact": 0.022,
+      "sourceStart": 6.3285,
+      "sourceEnd": 6.859792,
+      "sourceContact": 6.3505,
+      "duration": 0.531292,
+      "peak": 0.325956,
+      "rms": 0.027773,
+      "impactRms": 0.127954
+    },
+    {
+      "file": "step-07.wav",
+      "kind": "run",
+      "contact": 0.024,
+      "sourceStart": 7.336292,
+      "sourceEnd": 7.896021,
+      "sourceContact": 7.360292,
+      "duration": 0.559729,
+      "peak": 0.192454,
+      "rms": 0.019544,
+      "impactRms": 0.059923
+    },
+    {
+      "file": "step-08.wav",
+      "kind": "run",
+      "contact": 0.022,
+      "sourceStart": 8.372542,
+      "sourceEnd": 8.911896,
+      "sourceContact": 8.394542,
+      "duration": 0.539354,
+      "peak": 0.605925,
+      "rms": 0.031135,
+      "impactRms": 0.097688
+    },
+    {
+      "file": "step-09.wav",
+      "kind": "run",
+      "contact": 0.022,
+      "sourceStart": 9.388417,
+      "sourceEnd": 9.888042,
+      "sourceContact": 9.410417,
+      "duration": 0.499625,
+      "peak": 0.296947,
+      "rms": 0.030471,
+      "impactRms": 0.134323
+    },
+    {
+      "file": "step-10.wav",
+      "kind": "run",
+      "contact": 0.024,
+      "sourceStart": 10.364562,
+      "sourceEnd": 10.945542,
+      "sourceContact": 10.388563,
+      "duration": 0.580979,
+      "peak": 0.257787,
+      "rms": 0.018686,
+      "impactRms": 0.090457
+    }
+  ]
+}

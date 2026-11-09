@@ -1,10 +1,12 @@
 import {StudioModel} from './model.mjs';
+import {MarchAudio} from './audio.mjs';
 import {Renderer} from './renderer.mjs';
 import {DEFAULT_LIGHTING,normalizeLighting} from './lighting.mjs';
 
 const $ = id => document.getElementById(id);
 const canvas = $('battlefield');
 const model = new StudioModel();
+const audio = new MarchAudio();
 let renderer;
 let running = true, rate = 1, latest, ready = false, last = 0, accumulator = 0, uiTime = 0;
 let toastTimer;
@@ -21,7 +23,7 @@ function notify(message) {
   toastTimer = setTimeout(() => {$('toast').hidden = true;}, 4500);
 }
 function dirty() {$('save-state').textContent = 'Ændret siden gemning';}
-function selected() {return model.formations.find(f => f.id === model.selectedId) ?? model.formations[0];}
+function selected() {return model.formations.find(f => f.id === model.selectedId);}
 function mutate(fn) {
   try {fn(); dirty(); renderControls(); draw();}
   catch(error) {notify(error.message || 'Ændringen kunne ikke gennemføres.');}
@@ -61,7 +63,6 @@ function lightLabels() {
 
 function renderControls() {
   const f = selected();
-  if (f && !model.selectedId) model.selectedId = f.id;
   $('unit-list').replaceChildren(...model.formations.map(unit => {
     const button = document.createElement('button');
     button.textContent = unit.name;
@@ -70,7 +71,7 @@ function renderControls() {
     button.addEventListener('click', () => {model.selectedId = unit.id; dirty(); renderControls(); draw();});
     return button;
   }));
-  const fields = ['unit-name','strength','front-files','spacing','rank-spacing','shape','composition','speed','turn-rate','target-heading'];
+  const fields = ['unit-name','strength','front-files','spacing','rank-spacing','shape','composition','speed','turn-rate','turn-anchor','target-heading'];
   for (const id of fields) $(id).disabled = !f;
   for (const id of ['turn-unit','halt-unit','loss-10','loss-25','remove-formation','passage-order']) $(id).disabled = !f;
   $('add-formation').disabled = model.formations.length >= 6;
@@ -84,6 +85,7 @@ function renderControls() {
     $('composition').value = f.composition;
     $('speed').value = f.speed;
     $('turn-rate').value = Math.round(f.turnRate * 180 / Math.PI);
+    $('turn-anchor').value = f.turnAnchor ?? 'auto';
     $('target-heading').value = Math.round(degrees(f.target?.heading ?? f.heading));
   }
   for (const button of document.querySelectorAll('[data-terrain]')) button.classList.toggle('active', button.dataset.terrain === model.terrain);
@@ -138,6 +140,7 @@ function frame(now) {
   }
   try {draw();}
   catch(error) {fail(error); return;}
+  audio.update(model.formations,{running,visible:!document.hidden,rate,camera:audioView(),selectedId:model.selectedId});
   uiTime += elapsed;
   if (uiTime >= 0.15) {updateStats();uiTime=0;}
   requestAnimationFrame(frame);
@@ -147,9 +150,10 @@ function togglePlay(value = !running) {
   accumulator = 0;
   $('play-pause').textContent = running ? 'Ⅱ Pause' : '▶ Afspil';
   $('play-pause').setAttribute('aria-pressed', String(running));
+  audio.update(model.formations,{running,visible:!document.hidden,rate,camera:audioView(),selectedId:model.selectedId});
 }
 function fail(error) {
-  ready = false;
+  ready = false;audio.mute();
   $('loading').hidden = false;
   $('loading').querySelector('p').textContent = `Studiet kunne ikke starte: ${error.message}. Prøv at åbne det i en opdateret Chrome eller Edge.`;
   console.error(error);
@@ -158,7 +162,7 @@ function fail(error) {
 const patches = {
   'unit-name':['name',false],'strength':['strength',true],'front-files':['frontFiles',true],
   'spacing':['spacing',true],'rank-spacing':['rankSpacing',true],'shape':['shape',false],
-  'composition':['composition',false],'speed':['speed',true],'turn-rate':['turnRate',true],
+  'composition':['composition',false],'speed':['speed',true],'turn-rate':['turnRate',true],'turn-anchor':['turnAnchor',false],
 };
 for (const [id,[property,numeric]] of Object.entries(patches)) {
   $(id).addEventListener('change', () => {
@@ -177,9 +181,9 @@ $('add-formation').addEventListener('click', () => mutate(() => {
 $('remove-formation').addEventListener('click', () => {const f=selected();if(f)mutate(()=>model.removeFormation(f.id));});
 $('turn-unit').addEventListener('click', () => {
   const f=selected(), degreesValue=Number($('target-heading').value);
-  if (f && Number.isFinite(degreesValue)) mutate(()=>model.order(f.id,{x:f.target?.x ?? f.x,z:f.target?.z ?? f.z,heading:degreesValue*Math.PI/180}));
+  if (f && Number.isFinite(degreesValue)) mutate(()=>model.turn(f.id,degreesValue*Math.PI/180));
 });
-$('halt-unit').addEventListener('click', () => {const f=selected();if(f)mutate(()=>model.order(f.id,{x:f.x,z:f.z,heading:f.heading}));});
+$('halt-unit').addEventListener('click', () => {const f=selected();if(f)mutate(()=>model.halt(f.id));});
 for (const percent of [10,25]) $('loss-'+percent).addEventListener('click',()=>{
   const f=selected();if(f)mutate(()=>model.applyLosses(f.id,percent/100,$('loss-mode').value));
 });
@@ -206,10 +210,27 @@ $('light-enabled').addEventListener('change',()=>{view.lighting.enabled=$('light
 $('light-ink').addEventListener('input',()=>{view.lighting=cleanLighting({...view.lighting,inkColor:$('light-ink').value});dirty();draw();});
 $('reset-light').addEventListener('click',()=>{view.lighting={...assetLighting};lightLabels();dirty();draw();});
 
+function audioView(){return renderer?{...renderer.camera,pitch:renderer.pitch,aspect:canvas.clientWidth/Math.max(1,canvas.clientHeight)}:undefined;}
+function audioLabels(){
+  $('march-sound').textContent=audio.enabled?'Lyd: til':'Lyd: fra';
+  $('march-sound').setAttribute('aria-pressed',String(audio.enabled));
+  $('march-sound').setAttribute('aria-label',audio.enabled?'Slå marchlyd fra':'Slå marchlyd til');
+  $('march-volume-label').value=`${Math.round(audio.volume*100)} %`;
+  $('drum-volume-label').value=`${Math.round(audio.drumVolume*100)} %`;
+}
+$('march-sound').addEventListener('click',async()=>{
+  if(audio.enabled)audio.mute();
+  else if(!await audio.enable())notify('Marchlyden kunne ikke startes i denne browser.');
+  audioLabels();
+});
+$('march-volume').addEventListener('input',()=>{audio.setVolume(Number($('march-volume').value)/100);audioLabels();});
+$('drum-volume').addEventListener('input',()=>{audio.setDrumVolume(Number($('drum-volume').value)/100);audioLabels();});
+document.addEventListener('visibilitychange',()=>audio.update(model.formations,{running,visible:!document.hidden,rate,camera:audioView(),selectedId:model.selectedId}));
+window.addEventListener('pagehide',()=>audio.mute());
 $('play-pause').addEventListener('click',()=>togglePlay());
 $('step-time').addEventListener('click',()=>{togglePlay(false);for(let i=0;i<30;i++)model.step(1/60);dirty();draw();updateStats();});
 $('time-speed').addEventListener('change',()=>{rate=Number($('time-speed').value);});
-$('reset-scene').addEventListener('click',()=>{model.reset();renderer?.setCamera(defaults);togglePlay(true);dirty();renderControls();draw();notify('Et nyt forsøg er klar.');});
+$('reset-scene').addEventListener('click',()=>{model.reset();view.lighting={...assetLighting};renderer?.setCamera(defaults);togglePlay(true);dirty();renderControls();draw();notify('Et nyt forsøg er klar.');});
 
 function pointInPolygon(x,z,polygon) {
   let inside=false;
@@ -220,42 +241,60 @@ function pointInPolygon(x,z,polygon) {
   return inside;
 }
 let pointer=null;
+function handleAt(x,y){
+  if(!view.showTargets||!model.selectedId||!latest)return null;
+  return renderer.waypointHandles(latest,model.selectedId)
+    .map(handle=>({...handle,distance:Math.hypot(handle.screen.x-x,handle.screen.y-y)}))
+    .filter(handle=>handle.distance<=12).sort((a,b)=>a.distance-b.distance)[0]??null;
+}
 canvas.addEventListener('contextmenu',event=>event.preventDefault());
 canvas.addEventListener('pointerdown',event=>{
-  if(!ready)return;
-  pointer={id:event.pointerId,button:event.button,x:event.offsetX,y:event.offsetY,startX:event.offsetX,startY:event.offsetY,alt:event.altKey,drag:false};
+  if(!ready||pointer)return;
+  const handle=event.button===0&&!event.altKey?handleAt(event.offsetX,event.offsetY):null;
+  pointer={id:event.pointerId,button:event.button,x:event.offsetX,y:event.offsetY,startX:event.offsetX,startY:event.offsetY,alt:event.altKey,shift:event.shiftKey,drag:false,handle:null};
+  if(handle){
+    const point=latest.formations.find(f=>f.id===handle.formationId)?.waypoints.find(point=>point.id===handle.waypointId);
+    if(point)pointer.handle={...handle,centre:{x:point.x,z:point.z},heading:point.heading,
+      cornerAngle:Math.atan2(handle.world[0]-point.x,-(handle.world[1]-point.z))};
+  }
   canvas.setPointerCapture(event.pointerId);
 });
 canvas.addEventListener('pointermove',event=>{
-  if(!pointer || pointer.id!==event.pointerId || !renderer)return;
+  if(!renderer)return;
+  if(!pointer){canvas.style.cursor=handleAt(event.offsetX,event.offsetY)?'grab':'';return;}
+  if(pointer.id!==event.pointerId)return;
   const dx=event.offsetX-pointer.x,dy=event.offsetY-pointer.y;
   if(Math.hypot(event.offsetX-pointer.startX,event.offsetY-pointer.startY)>4)pointer.drag=true;
-  if(pointer.button===2) {
-    renderer.setCamera({yaw:renderer.camera.yaw+dx*0.006});cameraLabels();
-  } else if(pointer.button===1 || pointer.alt) {
-    const previous=renderer.screenToGround(pointer.x,pointer.y), next=renderer.screenToGround(event.offsetX,event.offsetY);
-    if(previous && next)renderer.setCamera({centerX:renderer.camera.centerX+previous.x-next.x,centerZ:renderer.camera.centerZ+previous.z-next.z});
+  if(pointer.handle&&pointer.drag){
+    const handle=pointer.handle,ground=renderer.screenToGround(event.offsetX,event.offsetY);
+    if(ground&&Math.hypot(ground.x-handle.centre.x,ground.z-handle.centre.z)>.25){
+      const heading=handle.heading+Math.atan2(ground.x-handle.centre.x,-(ground.z-handle.centre.z))-handle.cornerAngle;
+      if(model.rotateWaypoint(handle.formationId,handle.waypointId,heading)){dirty();renderControls();}
+    }
+    canvas.style.cursor='grabbing';
+  }else if(pointer.button===2&&pointer.drag){
+    renderer.setCamera({yaw:renderer.camera.yaw+dx*0.006});cameraLabels();dirty();
+  }else if((pointer.button===1||pointer.alt)&&pointer.drag){
+    const previous=renderer.screenToGround(pointer.x,pointer.y),next=renderer.screenToGround(event.offsetX,event.offsetY);
+    if(previous&&next)renderer.setCamera({centerX:renderer.camera.centerX+previous.x-next.x,centerZ:renderer.camera.centerZ+previous.z-next.z});
+    dirty();
   }
-  pointer.x=event.offsetX;pointer.y=event.offsetY;if(pointer.drag)dirty();draw();
+  pointer.x=event.offsetX;pointer.y=event.offsetY;draw();
 });
 canvas.addEventListener('pointerup',event=>{
-  if(!pointer || pointer.id!==event.pointerId)return;
-  const click=pointer.button===0 && !pointer.alt && !pointer.drag;
-  pointer=null;
+  if(!pointer||pointer.id!==event.pointerId)return;
+  const gesture=pointer;pointer=null;canvas.style.cursor='';
   if(canvas.hasPointerCapture(event.pointerId))canvas.releasePointerCapture(event.pointerId);
-  if(!click || !renderer)return;
-  const ground=renderer.screenToGround(event.offsetX,event.offsetY);
-  if(!ground)return;
+  if(gesture.button===2&&!gesture.drag){model.selectedId=null;dirty();renderControls();draw();return;}
+  if(gesture.button!==0||gesture.alt||gesture.drag||gesture.handle||!renderer)return;
+  const ground=renderer.screenToGround(event.offsetX,event.offsetY);if(!ground)return;
   const f=selected();
-  if(event.shiftKey && f) {
-    mutate(()=>model.order(f.id,{x:f.x,z:f.z,heading:Math.atan2(ground.x-f.x,-(ground.z-f.z))}));
-    notify(`Fronten for ${f.name} er sat.`);return;
-  }
   const hit=latest?.formations.find(unit=>unit.fields.some(field=>pointInPolygon(ground.x,ground.z,field.polygon)));
-  if(hit) {model.selectedId=hit.id;dirty();renderControls();draw();return;}
-  if(f) {mutate(()=>model.order(f.id,{x:ground.x,z:ground.z}));notify(`Marchordre til ${f.name}.`);}
+  if(hit&&!(gesture.shift&&f)){model.selectedId=hit.id;dirty();renderControls();draw();return;}
+  if(f){mutate(()=>model.setWaypoint(f.id,{x:ground.x,z:ground.z},gesture.shift));
+    notify(gesture.shift?`Rutepunkt tilføjet for ${f.name}.`:`Ny rute til ${f.name}.`);}
 });
-canvas.addEventListener('pointercancel',()=>{pointer=null;});
+canvas.addEventListener('pointercancel',()=>{pointer=null;canvas.style.cursor='';});
 canvas.addEventListener('wheel',event=>{
   event.preventDefault();
   renderer?.setCamera({zoom:Math.max(10,Math.min(110,renderer.camera.zoom*Math.exp(event.deltaY*0.001)))});
@@ -305,22 +344,48 @@ $('scene-file').addEventListener('change',async()=>{
   $('scene-file').value='';
 });
 
+let refreshingLibrary = false;
+let libraryRefreshPending = false;
+async function refreshLibraryFigures() {
+  if (!ready) return;
+  libraryRefreshPending = true;
+  if (refreshingLibrary) return;
+  refreshingLibrary = true;
+  try {
+    while (libraryRefreshPending) {
+      libraryRefreshPending = false;
+      const character = await renderer.loadAssets('assets/characters.json');
+      assetLighting = cleanLighting({azimuth:character.lighting?.azimuth??defaultLighting.azimuth,elevation:character.lighting?.elevation??defaultLighting.elevation},defaultLighting);
+      const registry = renderer.assets.registry;
+      $('asset-status').textContent = registry ? [...new Set(Object.values(registry.roles))].map(id=>registry.characters[id]?.label || id).join(' + ') : character.label || 'Figurer indlæst';
+      draw();
+    }
+    notify('Figurerne fra biblioteket er klar i formationerne.');
+  } catch (error) { notify(error.message || 'Figurerne kunne ikke indlæses fra biblioteket.'); }
+  finally { refreshingLibrary = false; }
+}
+if (typeof BroadcastChannel !== 'undefined') {
+  const libraryChannel = new BroadcastChannel('wf-animation-library');
+  libraryChannel.onmessage = event => { if (event.data?.type === 'activated') refreshLibraryFigures(); };
+}
+window.addEventListener('storage', event => { if (event.key === 'wf-animation-library-changed') refreshLibraryFigures(); });
+
 async function start() {
   try {
     renderer=new Renderer(canvas);
     renderer.setCamera(defaults);
-    const character=await renderer.loadAssets('assets/character.json');
-    assetLighting=cleanLighting({...defaultLighting,...character.lighting},defaultLighting);
+    const character=await renderer.loadAssets('assets/characters.json');
+    assetLighting=cleanLighting({azimuth:character.lighting?.azimuth??defaultLighting.azimuth,elevation:character.lighting?.elevation??defaultLighting.elevation},defaultLighting);
     view.lighting={...assetLighting};
     ready=true;
     let saved;
     try {saved=localStorage.getItem('wf-formation-study');} catch {}
     if(saved)try {openScene(JSON.parse(saved));$('save-state').textContent='Senest gemte studie';} catch {notify('Det gemte studie kunne ikke læses. Et nyt forsøg er klar.');}
     $('loading').hidden=true;
-    $('asset-status').textContent=renderer.assets?.normal ? 'Pikener · 16 retninger · verdensfast lys' : 'Pikener · 16 retninger · gang og stå';
+    $('asset-status').textContent=renderer.assets.registry ? [...new Set(Object.values(renderer.assets.registry.roles))].map(id=>renderer.assets.registry.characters[id]?.label || id).join(' + ') + ' · gang, løb og stilstand' : character.label || 'Figurer indlæst';
     renderControls();draw();updateStats();requestAnimationFrame(frame);
     // Small read-only entry point for integration checks and future separate studies.
-    window.formationStudio={model,renderer,view,get snapshot(){return latest;},openScene,sceneDocument,pause:()=>togglePlay(false)};
+    window.formationStudio={model,renderer,view,audio,get snapshot(){return latest;},openScene,sceneDocument,pause:()=>togglePlay(false)};
   } catch(error) {fail(error);}
 }
 start();

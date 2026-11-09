@@ -11,7 +11,7 @@
 <body>
 <header class="masthead">
   <div class="brand"><span class="brand-mark" aria-hidden="true">F</span><div><p class="eyebrow">Walking Fortress / Studie 02</p><h1>Formationsstudio</h1></div></div>
-  <div class="header-actions"><span id="save-state" class="save-state">Ny prøve</span><button id="save-scene">Gem studie</button><button id="load-scene">Åbn</button><button id="reset-scene" class="quiet">Ny prøve</button><input id="scene-file" type="file" accept=".json,application/json" hidden></div>
+  <div class="header-actions"><a href="library.html" target="_blank" rel="noopener" style="text-decoration:none;color:inherit;border:1px solid var(--line);border-radius:5px;padding:8px 12px;font-weight:600;background:#fbf8ee">Animationsbibliotek ↗</a><span id="save-state" class="save-state">Ny prøve</span><button id="save-scene">Gem studie</button><button id="load-scene">Åbn</button><button id="reset-scene" class="quiet">Ny prøve</button><input id="scene-file" type="file" accept=".json,application/json" hidden></div>
 </header>
 <main class="workspace">
   <aside class="sidebar" aria-label="Studiets indstillinger">
@@ -26,11 +26,13 @@
       <div class="field-row"><label class="field">Afstand sideværts <span>m</span><input id="spacing" type="number" min="0.55" max="3" step="0.05"></label><label class="field">Afstand mellem geledder <span>m</span><input id="rank-spacing" type="number" min="0.55" max="3" step="0.05"></label></div>
       <label class="field">Opstilling<select id="shape"><option value="battle">Slagorden</option><option value="column">Marchkolonne</option></select></label>
       <label class="field">Sammensætning<select id="composition"><option value="pikes">Pikenerer</option><option value="mixed">Pikekerne med skyttefløje</option></select></label>
-      <p class="hint">Skyttefløje bruger foreløbigt samme figur uden pike.</p>
+      <p class="hint">Skyttefløjene består af musketerer. Gang og løb følger soldatens bevægelse, med variation mellem soldaterne.</p>
       <div class="rule"></div>
       <h2>Bevægelse</h2>
-      <p class="hint">Klik på jorden for at give marchordre. Shift + klik sætter frontens retning.</p>
-      <div class="field-row"><label class="field">Marchhastighed <span>m/s</span><input id="speed" type="number" min="0.1" max="3" step="0.1"></label><label class="field">Drejning <span>°/s</span><input id="turn-rate" type="number" min="2" max="60" step="1"></label></div>
+      <p class="hint">Klik på jorden sætter et rutepunkt. Shift + klik tilføjer flere. Træk et hjørnegreb for at dreje opstillingen.</p>
+      <div class="field-row"><label class="field">Marchhastighed <span>m/s</span><input id="speed" type="number" min="0.1" max="3" step="0.1"></label><label class="field">Maks. drejning <span>°/s</span><input id="turn-rate" type="number" min="2" max="60" step="1"></label></div>
+      <label class="field">Drejeanker<select id="turn-anchor"><option value="auto">Automatisk · inderste front</option><option value="center">Centrum</option><option value="left">Venstre front</option><option value="right">Højre front</option></select></label>
+      <p class="hint">Indersiden går langsomt; ydersiden går hurtigere eller løber. Drejningen bremses, så ydersiden højst bevæger sig 3 m/s.</p>
       <div class="turn-control"><label class="field">Ønsket front <span>°</span><input id="target-heading" type="number" min="-360" max="360" step="15"></label><button id="turn-unit">Drej</button><button id="halt-unit" class="quiet">Holdt</button></div>
       <div class="rule"></div>
       <h2>Tab & omformning</h2>
@@ -60,6 +62,11 @@
       <label class="field range-label">Synlige soldater <output id="budget-label">600</output><input id="visual-budget" type="range" min="60" max="2400" step="60" value="600"></label>
       <p class="note">Antallet af tegnede figurer ændrer hverken troppestyrken eller formationernes bevægelse.</p>
       <div class="rule"></div>
+      <h2>Marchlyd</h2>
+      <label class="field range-label">Lydstyrke <output id="march-volume-label">35 %</output><input id="march-volume" type="range" min="0" max="100" step="1" value="35"></label>
+      <label class="field range-label">Trommer <output id="drum-volume-label">65 %</output><input id="drum-volume" type="range" min="0" max="100" step="1" value="65"></label>
+        <p class="hint">Optagede støvletrin og felttrommer følger marchtakten. Kameraets udsnit og zoom styrer retning, lydstyrke og detalje. Pause og holdt stopper lyden.</p>
+      <div class="rule"></div>
       <h2>Kamera</h2><p class="hint">Højre museknap drejer kameraet. Midterknappen eller Alt + træk flytter udsnittet. Musehjulet zoomer.</p>
       <label class="field range-label">Kameraretning <output id="camera-label">45°</output><input id="camera-yaw" type="range" min="0" max="360" step="1" value="45"></label>
       <button id="home-camera">Tilbage til overblik</button>
@@ -76,33 +83,33 @@
       <div class="rule"></div>
       <h2>Det grafiske udtryk</h2>
       <label class="field">Skyggestil<select id="light-style"><option value="hatch">Streger & krydsskravering</option><option value="solid">Flade blækfelter</option></select></label>
-      <label class="field range-label">Skyggestyrke <output id="light-strength-label">85 %</output><input id="light-strength" type="range" min="0" max="1" step="0.01" value="0.85"></label>
-      <label class="field range-label">Skyggens udbredelse <output id="light-threshold-label">52 %</output><input id="light-threshold" type="range" min="0.05" max="0.95" step="0.01" value="0.52"></label>
+      <label class="field range-label">Skyggestyrke <output id="light-strength-label">82 %</output><input id="light-strength" type="range" min="0" max="1" step="0.01" value="0.82"></label>
+      <label class="field range-label">Skyggens udbredelse <output id="light-threshold-label">37 %</output><input id="light-threshold" type="range" min="0.05" max="0.95" step="0.01" value="0.37"></label>
 
       <div id="hatch-controls">
-        <label class="field range-label">Stregafstand <output id="light-hatchSpacing-label">12 cm</output><input id="light-hatchSpacing" type="range" min="0.005" max="0.5" step="0.001" value="0.12"></label>
-        <label class="field range-label">Stregbredde <output id="light-hatchWidth-label">1,8 cm</output><input id="light-hatchWidth" type="range" min="0.0005" max="0.055" step="0.0005" value="0.018"></label>
+        <label class="field range-label">Stregafstand <output id="light-hatchSpacing-label">2,1 cm</output><input id="light-hatchSpacing" type="range" min="0.005" max="0.5" step="0.001" value="0.021"></label>
+        <label class="field range-label">Stregbredde <output id="light-hatchWidth-label">1,25 cm</output><input id="light-hatchWidth" type="range" min="0.0005" max="0.055" step="0.0005" value="0.0125"></label>
         <label class="field range-label">Stregvinkel <output id="light-hatchAngle-label">45°</output><input id="light-hatchAngle" type="range" min="0" max="180" step="1" value="45"></label>
-        <label class="field range-label">Krydsstreger fra skyggedybde <output id="light-crossStart-label">22 %</output><input id="light-crossStart" type="range" min="0.05" max="0.9" step="0.01" value="0.22"></label>
+        <label class="field range-label">Krydsstreger fra skyggedybde <output id="light-crossStart-label">5 %</output><input id="light-crossStart" type="range" min="0.05" max="0.9" step="0.01" value="0.05"></label>
         <p class="hint">Ved meget tæt skravering: sænk også stregbredden, så der er plads mellem stregerne.</p>
       </div>
-      <label class="field">Skyggeblæk<input id="light-ink" type="color" value="#29271f"></label>
+      <label class="field">Skyggeblæk<input id="light-ink" type="color" value="#000000"></label>
       <p class="note">Få parallelle streger ved kanten, tættere streger og krydsskravering i den mørke del. Konturer og folder beholder deres tegnede streger.</p>
       <button id="reset-light" class="wide">Gendan figurens skyggestil</button>
       <div class="rule"></div>
       <p class="hint">Normalkortet beskriver kroppens overflade. Kastede skygger på jorden og mellem soldater er et særskilt næste trin.</p>
     </section>
     </div>
-    <div class="sidebar-footer"><span class="status-dot"></span><span id="asset-status">Henter pikenerens billeder…</span></div>
+    <div class="sidebar-footer"><span class="status-dot"></span><span id="asset-status">Henter soldaternes billeder…</span></div>
   </aside>
   <section class="stage" aria-label="Formationsforsøg">
-    <div class="stage-toolbar"><div class="transport"><button id="play-pause" class="primary">Ⅱ Pause</button><button id="step-time" title="Gå et halvt sekund frem">+ ½ s</button><select id="time-speed" aria-label="Tidshastighed"><option value="0.5">½ ×</option><option value="1" selected>1 ×</option><option value="2">2 ×</option><option value="4">4 ×</option></select><span id="sim-clock">0:00</span></div><div class="terrain-name" id="terrain-name">Fladt land</div></div>
+    <div class="stage-toolbar"><div class="transport"><button id="play-pause" class="primary">Ⅱ Pause</button><button id="step-time" title="Gå et halvt sekund frem">+ ½ s</button><select id="time-speed" aria-label="Tidshastighed"><option value="0.5">½ ×</option><option value="1" selected>1 ×</option><option value="2">2 ×</option><option value="4">4 ×</option></select><span id="sim-clock">0:00</span><button id="march-sound" class="quiet" aria-pressed="false" aria-label="Slå marchlyd til" title="Marchtrin i troppernes takt">Lyd: fra</button></div><div class="terrain-name" id="terrain-name">Fladt land</div></div>
     <div class="viewport"><canvas id="battlefield" aria-label="3D-terræn med formationer" tabindex="0"></canvas>
       <div class="view-title"><p class="eyebrow">Forsøg med felter og sprites</p><p id="view-summary">Tre fænnicker på åbent land</p></div>
       <div class="legend"><span><i class="legend-pike"></i>Pikenerer</span><span><i class="legend-shot"></i>Skyttefløj</span><span><i class="legend-target"></i>Ønsket felt</span></div>
       <div id="loading" class="loading"><div class="loading-mark">F</div><p>Gør slagmarken klar…</p></div>
       <div class="camera-compass"><span id="compass-arrow">↑</span><small>N</small></div>
-      <div class="viewport-note">Klik fænnike: vælg · klik jord: marchér · Shift + klik: drej front</div>
+      <div class="viewport-note">Klik: rutepunkt · Shift + klik: tilføj · træk hjørne: drej · højreklik: afmarkér</div>
     </div>
     <div class="inspector-strip"><div><span class="eyebrow">Valgt fænnike</span><strong id="selected-label">—</strong></div><div><span class="eyebrow">Tilstand</span><strong id="unit-status">Klar</strong></div><div><span class="eyebrow">Troppestyrke</span><strong id="troop-count">—</strong></div><div><span class="eyebrow">Tegnede figurer</span><strong id="draw-count">—</strong></div><div><span class="eyebrow">Feltets mål</span><strong id="footprint-size">—</strong></div></div>
   </section>

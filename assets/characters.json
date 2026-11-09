@@ -1,0 +1,23 @@
+{
+  "schema": "walking-fortress-characters-v1",
+  "defaultCharacter": "pikeman",
+  "roles": {
+    "pike": "pikeman",
+    "shot": "musketeer"
+  },
+  "characters": {
+    "pikeman": {
+      "manifest": "pikeman/character.json",
+      "label": "Pikener",
+      "pikeAppearance": {
+        "darkness": 0.0,
+        "opacity": 2.0,
+        "widthScale": 1.39
+      }
+    },
+    "musketeer": {
+      "manifest": "musketeer/character.json",
+      "label": "Musketer"
+    }
+  }
+}

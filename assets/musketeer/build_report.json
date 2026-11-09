@@ -1,0 +1,117 @@
+{
+  "frames": 2496,
+  "sourceFolder": "assets\\musketeer\\sprite_exports\\V2_Musketeer_20261012",
+  "sourceSHA256": "1314290ce7ae5a731c8fe7fe95f438cc85e31b6b7ce4ca5befb506deebf9f242",
+  "sourceManifestsSHA256": {
+    "sprites.json": "352f51dc821e95352ff3c82f25cd23b7a89ce6eb9c33dfa88ec6946d70601b97"
+  },
+  "bodyAtlasSize": [
+    4096,
+    4096
+  ],
+  "normalAtlasSize": [
+    4096,
+    4096
+  ],
+  "pikeAtlasSize": null,
+  "clips": {
+    "idle1": {
+      "duration": 4.0,
+      "kind": "idle",
+      "frameCount": 24,
+      "action": "Idle1",
+      "directionCount": 16
+    },
+    "idle2": {
+      "duration": 4.0,
+      "kind": "idle",
+      "frameCount": 24,
+      "action": "Idle2",
+      "directionCount": 16
+    },
+    "idle3": {
+      "duration": 4.0,
+      "kind": "idle",
+      "frameCount": 24,
+      "action": "Idle3",
+      "directionCount": 16
+    },
+    "run_3m1": {
+      "duration": 2.0,
+      "kind": "walk",
+      "frameCount": 12,
+      "action": "Run_3m1",
+      "gait": "run",
+      "nominalSpeed": 3.0,
+      "directionCount": 16
+    },
+    "run_3m2": {
+      "duration": 2.0,
+      "kind": "walk",
+      "frameCount": 12,
+      "action": "Run_3m2",
+      "gait": "run",
+      "nominalSpeed": 3.0,
+      "directionCount": 16
+    },
+    "walk_0_5m1": {
+      "duration": 2.0,
+      "kind": "walk",
+      "frameCount": 12,
+      "action": "Walk_0.5m1",
+      "gait": "walk",
+      "nominalSpeed": 0.5,
+      "directionCount": 16
+    },
+    "walk_0_5m2": {
+      "duration": 2.0,
+      "kind": "walk",
+      "frameCount": 12,
+      "action": "Walk_0.5m2",
+      "gait": "walk",
+      "nominalSpeed": 0.5,
+      "directionCount": 16
+    },
+    "walk_1_5m1": {
+      "duration": 2.0,
+      "kind": "walk",
+      "frameCount": 12,
+      "action": "Walk_1.5m1",
+      "gait": "walk",
+      "nominalSpeed": 1.5,
+      "directionCount": 16
+    },
+    "walk_1_5m2": {
+      "duration": 2.0,
+      "kind": "walk",
+      "frameCount": 12,
+      "action": "Walk_1.5m2",
+      "gait": "walk",
+      "nominalSpeed": 1.5,
+      "directionCount": 16
+    },
+    "walk_1_5m3": {
+      "duration": 2.0,
+      "kind": "walk",
+      "frameCount": 12,
+      "action": "Walk_1.5m3",
+      "gait": "walk",
+      "nominalSpeed": 1.5,
+      "directionCount": 16
+    }
+  },
+  "normalSpace": "actor-blender-world",
+  "normalEncoding": "RGB8-linear-signed",
+  "normalResampling": "coverage-weighted linear vectors, renormalized after filter, 4px transparent RGB dilation",
+  "bodyTexelArea": 8126853,
+  "pikeTexelArea": 0,
+  "orderedOwnerMaskOperations": 0,
+  "geometrySource": null,
+  "previousAssetsBackup": null,
+  "checks": {
+    "pairedFrameAlignment": 2496,
+    "checkedPikeFrames": 0,
+    "unitNormalErrorMax": 0.008,
+    "preservedInkOnlyPixels": 14560
+  }
+}

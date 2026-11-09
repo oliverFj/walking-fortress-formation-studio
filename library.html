@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="da">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#ede6d5"><title>Animationsbibliotek · Walking Fortress</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='6' fill='%233d443b'/%3E%3Cpath d='M10 29V11h21M10 20h17' fill='none' stroke='%23efe6cf' stroke-width='3'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="library.css">
+</head>
+<body>
+<header class="masthead">
+  <div class="brand"><span class="brand-mark" aria-hidden="true">A</span><div><p class="eyebrow">Walking Fortress / Figurer & animationer</p><h1>Animationsbibliotek</h1></div></div>
+  <a class="button quiet" href="index.html">Formationsstudio ↗</a>
+</header>
+<main class="library-workspace">
+  <section class="source-pane" aria-labelledby="source-title">
+    <div class="section-intro"><p class="eyebrow">01 / Vælg kilde</p><h2 id="source-title">Fra Blender til bibliotek</h2><p>Vælg en færdigopsat .blend-fil. Animationer, figurer og pikepunkter læses fra modellen.</p></div>
+    <form id="source-form">
+      <label class="field">Blender-fil<input id="blend-path" type="text" placeholder="E:\…\Min figur.blend" autocomplete="off" spellcheck="false" required></label>
+      <div class="button-row"><button id="pick-blend" type="button">Vælg fil…</button><button id="inspect-blend" type="submit" class="primary">Find animationer</button></div>
+    </form>
+    <p id="source-status" class="hint" role="status">Originalfilen ændres ikke. Hver rendering gemmes som en ny version.</p>
+    <div id="source-details" hidden>
+      <div class="rule"></div>
+      <label class="field">Navn i biblioteket<input id="character-label" type="text" maxlength="80"></label>
+      <label class="field">Figur<select id="character-choice"><option value="">Ny figur</option></select></label>
+      <p id="model-summary" class="hint"></p>
+      <div class="section-heading"><h2>Animationer</h2><button id="select-all" type="button" class="small quiet">Vælg alle</button></div>
+      <p class="hint">Hver valgt animation får alle 16 kameravinkler. Gang og stilstand kan bruges i formationerne; andre animationer bliver også gemt.</p>
+      <div id="clip-list" class="clip-list"></div>
+      <details id="pike-details" class="advanced">
+        <summary>Separat pike & stil</summary>
+        <label class="check"><input id="pike-enabled" type="checkbox"><span>Tegn piken separat</span></label>
+        <label class="field">Pikeobjekt<select id="pike-object"></select></label>
+        <p class="hint">Greb, bagende og spids er i objektets lokale Blender-koordinater. Når grebet flyttes, flyttes hele piken.</p>
+        <div class="point-table"><span></span><span>X</span><span>Y</span><span>Z</span>
+          <label for="pike-grip-x">Greb</label><input id="pike-grip-x" type="number" step="0.01" aria-label="Greb X"><input id="pike-grip-y" type="number" step="0.01" aria-label="Greb Y"><input id="pike-grip-z" type="number" step="0.01" aria-label="Greb Z">
+          <label for="pike-butt-x">Bagende</label><input id="pike-butt-x" type="number" step="0.01" aria-label="Bagende X"><input id="pike-butt-y" type="number" step="0.01" aria-label="Bagende Y"><input id="pike-butt-z" type="number" step="0.01" aria-label="Bagende Z">
+          <label for="pike-tip-x">Spids</label><input id="pike-tip-x" type="number" step="0.01" aria-label="Spids X"><input id="pike-tip-y" type="number" step="0.01" aria-label="Spids Y"><input id="pike-tip-z" type="number" step="0.01" aria-label="Spids Z">
+        </div>
+        <div class="field-row"><label class="field">Skaftbredde · cm<input id="pike-width" type="number" min="0.001" max="100" step="0.1"></label><label class="field">Skaftstreg · cm<input id="pike-stroke" type="number" min="0" max="100" step="0.05"></label></div>
+        <div class="field-row"><label class="field">Spidslængde · cm<input id="pike-head-length" type="number" min="0" max="200" step="0.1"></label><label class="field">Spidsbredde · cm<input id="pike-head-width" type="number" min="0" max="100" step="0.1"></label></div>
+        <div class="field-row"><label class="field">Spidsstreg · cm<input id="pike-head-stroke" type="number" min="0" max="100" step="0.05"></label><label class="field">Lag<select id="pike-layer"><option value="front">Foran kroppen</option><option value="back">Bag kroppen</option></select></label></div>
+        <div class="field-row"><label class="field">Blæk<input id="pike-ink" type="color" value="#000000"></label><label class="field">Skaft & spids<input id="pike-paper" type="color" value="#eadccb"></label></div>
+        <p class="hint">Skaft og spids justeres uafhængigt. Kroppens og hændernes maskering følger de renderede poser.</p>
+      </details>
+      <div class="render-summary"><strong id="render-count">—</strong><span>16 vinkler · 6 billeder/s · fælles fodanker & målestok</span></div>
+      <button id="render-all" class="primary wide" type="button">Render & tilføj til bibliotek</button>
+      <p class="hint render-note">Alle frames, farver, normalkort og piker pakkes automatisk. En hel serie kan tage tid; fanen må gerne stå åben.</p>
+    </div>
+  </section>
+  <section class="preview-pane" aria-labelledby="preview-title">
+    <div class="section-heading"><div><p class="eyebrow">02 / Se animationen</p><h2 id="preview-title">Vælg en figur fra biblioteket</h2></div><span id="version-badge" class="badge" hidden></span></div>
+    <div class="preview-stage">
+      <canvas id="character-preview" aria-label="Animeret figur med studiets skravering"></canvas>
+      <div id="preview-empty" class="preview-empty"><span aria-hidden="true">A</span><p>Figurer og animationer samlet ét sted.</p><small>Vælg en version til højre, eller render en ny model.</small></div>
+      <p id="preview-loading" class="preview-loading" hidden>Indlæser figur…</p>
+    </div>
+    <div id="preview-controls" class="preview-controls" hidden>
+      <div class="field-row"><label class="field">Animation<select id="preview-clip"></select></label><label class="field">Vinkel<select id="preview-direction"></select></label></div>
+      <div class="timeline"><button id="preview-play" type="button" aria-pressed="true">Pause</button><input id="preview-frame" type="range" min="0" max="0" value="0" aria-label="Animationsframe"><output id="frame-label">1 / 1</output></div>
+      <div class="preview-meta"><span id="clip-meta"></span><label class="check"><input id="preview-pikes" type="checkbox" checked><span>Vis pike</span></label></div>
+      <section id="pike-appearance" class="pike-appearance" aria-labelledby="pike-appearance-title" hidden>
+        <div class="section-heading"><h3 id="pike-appearance-title">Pikens udseende</h3><button id="save-pike-appearance" type="button" class="small" disabled>Gem pikeudseende</button></div>
+        <div class="appearance-sliders">
+          <label class="appearance-slider" for="preview-pike-darkness"><span>Mørkhed</span><output id="preview-pike-darkness-value" for="preview-pike-darkness">0 %</output><input id="preview-pike-darkness" type="range" min="0" max="100" step="1" value="0"></label>
+          <label class="appearance-slider" for="preview-pike-opacity"><span>Dækevne</span><output id="preview-pike-opacity-value" for="preview-pike-opacity">100 %</output><input id="preview-pike-opacity" type="range" min="0" max="200" step="1" value="100"></label>
+          <label class="appearance-slider" for="preview-pike-width"><span>Bredde</span><output id="preview-pike-width-value" for="preview-pike-width">100 %</output><input id="preview-pike-width" type="range" min="50" max="300" step="1" value="100"></label>
+        </div>
+        <p class="hint">100 % dækevne og bredde er originalen. Du ser ændringen med det samme, uden en ny rendering.</p>
+        <p id="pike-appearance-note" class="hint" role="status"></p>
+      </section>
+      <div class="activation"><span>Brug i formationerne</span><button id="activate-pike" type="button">Som pikener</button><button id="activate-shot" type="button">Som musketer</button></div>
+      <p id="activation-note" class="hint">Et skift gælder, når formationsstudioet genindlæses.</p>
+    </div>
+    <section class="jobs-section" aria-labelledby="jobs-title"><div class="section-heading"><div><p class="eyebrow">Arbejdet i baggrunden</p><h2 id="jobs-title">Renderinger</h2></div><button id="refresh-library" class="small quiet" type="button">Opdatér</button></div><div id="render-jobs"><p class="hint">Ingen renderinger endnu.</p></div></section>
+  </section>
+  <aside class="catalog-pane" aria-labelledby="catalog-title"><div class="section-intro"><p class="eyebrow">03 / Dit bibliotek</p><h2 id="catalog-title">Figurer & versioner</h2><p>En ny rendering bevarer de tidligere versioner.</p></div><div id="character-library"><p class="hint">Henter bibliotek…</p></div><p id="library-status" class="hint" role="status"></p></aside>
+</main>
+<div id="toast" class="toast" role="status" hidden></div>
+<script type="module" src="library.mjs"></script>
+</body>
+</html>

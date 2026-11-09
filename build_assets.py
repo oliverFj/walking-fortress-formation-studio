@@ -24,9 +24,13 @@ import numpy as np
 DEFAULT_NODE = Path("C:/Users/olive/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node.exe")
 SS = 4
 GUTTER = 2
+MAX_ATLAS = 4096
 
 
 def geometry(records, node):
+    records = [record for record in records if record.get("pike")]
+    if not records:
+        return {}
     helper = ROOT / "tools/blender/pikeman_preview_geometry.mjs"
     result = subprocess.run([str(node), str(helper)], input=json.dumps(records),
                             text=True, capture_output=True, check=True)
@@ -152,12 +156,14 @@ def weapon_strip(pike, polygons):
 
 def pack(images, width=1024):
     """Deterministic shelf atlas; the same placements are reused for normals."""
+    if width > MAX_ATLAS:
+        raise ValueError("Sprite pack exceeds the supported 4096 × 4096 atlas; reduce --size")
     x = y = rowheight = 0
     placements = []
     for image in images:
         w, h = image.size
         if w + 2 * GUTTER > width:
-            raise ValueError("Texture item is too wide")
+            return pack(images, width * 2)
         if x + w + 2 * GUTTER > width:
             x = 0
             y += rowheight
@@ -167,7 +173,7 @@ def pack(images, width=1024):
         rowheight = max(rowheight, h + 2 * GUTTER)
     usedheight = y + rowheight
     height = 2 ** math.ceil(math.log2(max(1, usedheight)))
-    if height > 4096:
+    if height > MAX_ATLAS:
         return pack(images, width * 2)
     canvas = Image.new("RGBA", (width, height))
     for image, rect in zip(images, placements):
@@ -211,9 +217,32 @@ def shade_body(body, normal, light, lighting):
     return Image.fromarray(np.rint(np.clip(rgba, 0, 1) * 255).astype(np.uint8))
 
 
-def preview(entries, out, lighting):
-    wanted = [next(e for e in entries if e["clip"] == "walk" and e["direction"] == i and e["index"] == 0) for i in (0, 4, 8, 12)]
-    bounds = [-72, -210, 72, 20]
+def clip_kind(clip):
+    """Keep original action names; select motion by its explicit semantic tag."""
+    for value in (clip.get("kind"), clip.get("type"), *(clip.get("tags") or [])):
+        if value in ("idle", "walk"):
+            return value
+    name = clip["name"].lower()
+    if "walk" in name or "march" in name:
+        return "walk"
+    if "idle" in name or "stand" in name:
+        return "idle"
+    return "action"
+
+
+def preview(entries, out, lighting, clips):
+    clipname = next((name for name, clip in clips.items() if clip["kind"] == "walk"), entries[0]["clip"])
+    directions = sorted({entry["direction"] for entry in entries if entry["clip"] == clipname})
+    wanted_directions = [directions[i * len(directions) // min(4, len(directions))] for i in range(min(4, len(directions)))]
+    wanted = [next(e for e in entries if e["clip"] == clipname and e["direction"] == direction) for direction in wanted_directions]
+    points = []
+    for entry in wanted:
+        pivot = entry["output"]["body"]["pivot"]
+        points += [[x - pivot[0], y - pivot[1]] for x, y in ((0, 0), entry["body"].size)]
+        if entry["pike"]:
+            points += [[p[0] - pivot[0], p[1] - pivot[1]] for p in entry["output"]["pike"]["corners"]]
+    bounds = [math.floor(min(p[0] for p in points)) - 8, math.floor(min(p[1] for p in points)) - 8,
+              math.ceil(max(p[0] for p in points)) + 8, math.ceil(max(p[1] for p in points)) + 8]
     cw, ch = bounds[2] - bounds[0], bounds[3] - bounds[1]
     def sheet(kind, light=None):
         canvas = Image.new("RGBA", ((cw + 12) * len(wanted) + 12, ch + 38), "#e6dfcd")
@@ -231,10 +260,11 @@ def preview(entries, out, lighting):
                 cell = Image.alpha_composite(cell, inverse_strip(entry["pike"], corners, bounds))
             x = 12 + n * (cw + 12)
             canvas.alpha_composite(cell, (x, 10))
-            draw.text((x + 30, ch + 16), f'Retning {n * 4 + 1}', fill="#322a22")
+            draw.text((x + 4, ch + 16), f'Retning {entry["direction"] + 1}', fill="#322a22")
         return canvas
-    sheet("body").convert("RGB").resize((1272, 536), Image.Resampling.NEAREST).save(out / "preview.png")
-    sheet("normal").convert("RGB").resize((1272, 536), Image.Resampling.NEAREST).save(out / "normal_preview.png")
+    for kind, filename in (("body", "preview.png"), ("normal", "normal_preview.png")):
+        result = sheet(kind).convert("RGB")
+        result.resize((result.width * 2, result.height * 2), Image.Resampling.NEAREST).save(out / filename)
     elevation = math.radians(lighting["elevation"])
     lights = [(math.cos(elevation), 0, math.sin(elevation)), (-math.cos(elevation), 0, math.sin(elevation))]
     rows = [sheet("body", light).convert("RGB") for light in lights]
@@ -252,13 +282,25 @@ def read_source(source, size):
         raise ValueError("Expected linear encoded actor-Blender-world normals")
     records = []
     entries = []
-    durations = {}
+    clips = {}
     source_hashes = {"sprites.json": hashlib.sha256(manifest.read_bytes()).hexdigest()}
     for clip in metadata["clips"]:
         clipname = clip["name"]
-        durations[clipname] = clip["duration_seconds"]
+        if clipname in clips:
+            raise ValueError(f"Duplicate clip name: {clipname}")
+        direction_indices = sorted(direction["index"] for direction in clip["directions"])
+        if direction_indices != list(range(len(direction_indices))) or not direction_indices:
+            raise ValueError(f"Clip {clipname} must have contiguous directions from zero")
+        counts = [len(direction["frames"]) for direction in clip["directions"]]
+        if not counts[0] or len(set(counts)) != 1 or clip["duration_seconds"] <= 0:
+            raise ValueError(f"Clip {clipname} must have a positive duration and equal nonempty direction frame counts")
+        clips[clipname] = {"duration": clip["duration_seconds"], "kind": clip_kind(clip),
+                           "frameCount": counts[0], "directions": [[] for _ in direction_indices]}
+        for key in ("label", "action", "tags", "gait", "nominalSpeed"):
+            if key in clip:
+                clips[clipname][key] = copy.deepcopy(clip[key])
         for direction in sorted(clip["directions"], key=lambda d: d["index"]):
-            for frame in direction["frames"]:
+            for frame in sorted(direction["frames"], key=lambda f: f["index"]):
                 with Image.open(source / frame["albedo"]) as image:
                     body = image.convert("RGBA")
                 with Image.open(source / frame["normal"]) as image:
@@ -282,7 +324,12 @@ def read_source(source, size):
                 entries.append({"key": key, "clip": clipname, "direction": direction["index"], "index": frame["index"],
                                 "source": source_frame, "body": body.crop(crop), "normal": normal.crop(crop), "crop": crop, "output": output})
                 records.append({"key": key, "pike": pike})
-    return metadata, entries, records, durations, source_hashes
+    if not entries:
+        raise ValueError("Source contains no sprite frames")
+    direction_counts = {len(clip["directions"]) for clip in clips.values()}
+    if len(direction_counts) != 1:
+        raise ValueError("All clips must use the same direction count")
+    return metadata, entries, records, clips, source_hashes
 
 
 def backup_existing(out):
@@ -291,7 +338,7 @@ def backup_existing(out):
     if not character.exists():
         return None
     previous = json.loads(character.read_text(encoding="utf-8"))
-    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
     backup = out / "versions" / ("ink-baked-v1_" + stamp if previous["schema"].endswith("v1") else "relightable-v2_" + stamp)
     backup.mkdir(parents=True, exist_ok=False)
     for name in ("character.json", "body.png", "normals.png", "pikes.png", "preview.png", "normal_preview.png", "lighting_preview.png", "build_report.json", "README.md"):
@@ -302,18 +349,25 @@ def backup_existing(out):
 
 def validate(document, bodyatlas, normalatlas, pikeatlas, entries):
     assert bodyatlas.size == normalatlas.size
-    assert all(v <= 4096 for image in (bodyatlas, normalatlas, pikeatlas) for v in image.size)
+    assert all(v <= 4096 for image in (bodyatlas, normalatlas, pikeatlas) if image is not None for v in image.size)
     checked = 0
+    checked_pikes = 0
     ink_only = 0
     for name, clip in document["clips"].items():
-        assert len(clip["directions"]) == 16
-        assert all(len(direction) == (12 if name == "walk" else 15) for direction in clip["directions"])
+        assert len(clip["directions"]) == document["directionCount"]
+        assert all(len(direction) == clip["frameCount"] for direction in clip["directions"])
         for direction in clip["directions"]:
             for frame in direction:
                 for kind, atlas in (("body", bodyatlas), ("pike", pikeatlas)):
+                    if kind not in frame:
+                        continue
+                    assert atlas is not None
                     x, y, w, h = frame[kind]["rect"]
                     assert 0 <= x < x + w <= atlas.width and 0 <= y < y + h <= atlas.height
                     assert atlas.crop((x, y, x + w, y + h)).getchannel("A").getbbox()
+                checked += 1
+                if "pike" not in frame:
+                    continue
                 corners = frame["pike"]["corners"]
                 w, h = frame["pike"]["rect"][2:]
                 assert math.isclose(math.dist(corners[0], corners[1]), w, rel_tol=1e-7)
@@ -321,7 +375,7 @@ def validate(document, bodyatlas, normalatlas, pikeatlas, entries):
                 u = [corners[1][i] - corners[0][i] for i in range(2)]
                 v = [corners[3][i] - corners[0][i] for i in range(2)]
                 assert abs(sum(u[i] * v[i] for i in range(2))) < 1e-5
-                checked += 1
+                checked_pikes += 1
     for entry in entries:
         x, y, w, h = entry["output"]["body"]["rect"]
         assert bodyatlas.crop((x, y, x + w, y + h)).tobytes() == entry["body"].tobytes()
@@ -331,7 +385,28 @@ def validate(document, bodyatlas, normalatlas, pikeatlas, entries):
         lengths = np.linalg.norm(rgba[:, :, :3].astype(np.float32) / 127.5 - 1, axis=2)
         assert np.all(np.abs(lengths[covered] - 1) < 0.008)
         ink_only += int(np.sum((np.asarray(entry["body"])[:, :, 3] > 127) & (rgba[:, :, 3] == 0)))
-    return {"pairedFrameAlignment": checked, "unitNormalErrorMax": 0.008, "preservedInkOnlyPixels": ink_only}
+    return {"pairedFrameAlignment": checked, "checkedPikeFrames": checked_pikes, "unitNormalErrorMax": 0.008, "preservedInkOnlyPixels": ink_only}
+
+
+def update_registry(path, out, character_id, label, role):
+    """Register a completed runtime pack; preserve the former single character."""
+    path = path.resolve()
+    if path.exists():
+        registry = json.loads(path.read_text(encoding="utf-8"))
+        if registry.get("schema") != "walking-fortress-characters-v1":
+            raise ValueError("Unexpected characters registry schema")
+    else:
+        registry = {"schema": "walking-fortress-characters-v1", "defaultCharacter": character_id,
+                    "roles": {}, "characters": {}}
+        backup_existing(path.parent)
+    manifest = (out.resolve() / "character.json").relative_to(path.parent).as_posix()
+    registry["characters"][character_id] = {"manifest": manifest, "label": label or character_id}
+    if role:
+        registry["roles"][role] = character_id
+    if role == "pike":
+        registry["defaultCharacter"] = character_id
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(registry, indent=2, ensure_ascii=False) + "\n", encoding="utf-8", newline="\n")
 
 
 def self_test():
@@ -360,7 +435,19 @@ def self_test():
     scaled = scale_pike(pike, 100 / 256)
     assert scaled["width"] == 1.5625 and scaled["operations"][0]["width"] == 1.171875
     assert pike["width"] == 4
-    print("3 asset checks passed: coverage-aware normals, shared atlas alignment, pike scaling")
+    # Named variants and bodies without a separate weapon remain valid packs.
+    assert clip_kind({"name": "Relaxed stance", "kind": "idle"}) == "idle"
+    assert clip_kind({"name": "Cautious", "tags": ["walk"]}) == "walk"
+    assert clip_kind({"name": "walk_b"}) == "walk"
+    body = Image.new("RGBA", (8, 8), (220, 200, 160, 255))
+    normal = Image.new("RGBA", (8, 8), (128, 128, 255, 255))
+    atlas, placements = pack([body, body])
+    normals = aligned_atlas([normal, normal], placements, atlas.size)
+    entries = [{"body": body, "normal": normal, "output": {"body": {"rect": rect, "pivot": [4, 8]}}} for rect in placements]
+    document = {"directionCount": 2, "clips": {"Relaxed stance": {"frameCount": 1, "directions": [[entry["output"]] for entry in entries]}}}
+    checks = validate(document, atlas, normals, None, entries)
+    assert checks["pairedFrameAlignment"] == 2 and checks["checkedPikeFrames"] == 0
+    print("4 asset checks passed: coverage-aware normals, shared atlas alignment, pike scaling, named variants without a pike")
 
 
 def main():
@@ -369,28 +456,36 @@ def main():
     parser.add_argument("--node", type=Path, default=DEFAULT_NODE)
     parser.add_argument("--out", type=Path, default=Path(__file__).resolve().parent / "assets")
     parser.add_argument("--size", type=int, default=100)
+    parser.add_argument("--character-id", help="Stable character id for a multi-character registry")
+    parser.add_argument("--label", help="User-facing character name")
+    parser.add_argument("--registry", type=Path, help="Update this characters.json after the pack completes")
+    parser.add_argument("--role", choices=("pike", "shot"), help="Formation role assigned in the registry")
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
     if args.self_test:
         self_test()
         return
+    if not 32 <= args.size <= 1024:
+        parser.error("--size must be between 32 and 1024")
+    if args.registry is not None and not args.character_id:
+        parser.error("--registry requires --character-id")
     if args.source is None:
         sources = sorted((ROOT / "assets/musketeer/sprite_exports").glob("Pikener_normals_*/sprites.json"))
         if not sources:
             parser.error("No paired normal export found; specify --source")
         args.source = sources[-1].parent
-    metadata, entries, records, durations, source_hashes = read_source(args.source, args.size)
+    metadata, entries, records, clips, source_hashes = read_source(args.source, args.size)
     polygons = geometry(records, args.node)
     for entry in entries:
         pike = entry["source"].get("attachments", {}).get("pike")
-        strip, corners = weapon_strip(pike, polygons[entry["key"]])
+        strip, corners = weapon_strip(pike, polygons.get(entry["key"], []))
         entry["pike"] = strip
         if strip:
             entry["output"]["pike"] = {"corners": [[p[0] - entry["crop"][0], p[1] - entry["crop"][1]] for p in corners], "layer": pike.get("layer", "front")}
     bodyatlas, bodyrects = pack([e["body"] for e in entries])
     normalatlas = aligned_atlas([e["normal"] for e in entries], bodyrects, bodyatlas.size)
     pikentries = [e for e in entries if e["pike"]]
-    pikeatlas, pikerects = pack([e["pike"] for e in pikentries])
+    pikeatlas, pikerects = pack([e["pike"] for e in pikentries]) if pikentries else (None, [])
     for entry, rect in zip(entries, bodyrects):
         entry["output"]["body"]["rect"] = rect
     for entry, rect in zip(pikentries, pikerects):
@@ -400,9 +495,13 @@ def main():
                 "azimuth": ink.get("shadow_azimuth_degrees", -45) % 360, "elevation": ink.get("shadow_elevation_degrees", 55)}
     document = {"schema": "walking-fortress-formation-character-v2", "pixelsPerUnit": args.size / metadata["ortho_scale"],
                 "firstAzimuth": metadata["first_azimuth_degrees"], "azimuthStep": metadata["azimuth_step_degrees"], "elevation": metadata["elevation_degrees"],
-                "bodyAtlas": "body.png", "normalAtlas": "normals.png", "pikeAtlas": "pikes.png", "bodyAtlasSize": list(bodyatlas.size),
-                "normalAtlasSize": list(normalatlas.size), "pikeAtlasSize": list(pikeatlas.size), "normalSpace": "actor-blender-world", "normalEncoding": "RGB8-linear-signed",
-                "lighting": lighting, "clips": {name: {"duration": duration, "directions": [[] for _ in range(16)]} for name, duration in durations.items()}}
+                "bodyAtlas": "body.png", "normalAtlas": "normals.png", "pikeAtlas": "pikes.png" if pikeatlas else None, "bodyAtlasSize": list(bodyatlas.size),
+                "normalAtlasSize": list(normalatlas.size), "pikeAtlasSize": list(pikeatlas.size) if pikeatlas else None, "normalSpace": "actor-blender-world", "normalEncoding": "RGB8-linear-signed",
+                "directionCount": len(next(iter(clips.values()))["directions"]), "lighting": lighting, "clips": clips}
+    if args.character_id:
+        document["id"] = args.character_id
+    if args.label:
+        document["label"] = args.label
     for entry in entries:
         document["clips"][entry["clip"]]["directions"][entry["direction"]].append(entry["output"])
     checks = validate(document, bodyatlas, normalatlas, pikeatlas, entries)
@@ -410,16 +509,22 @@ def main():
     backup = backup_existing(args.out)
     bodyatlas.save(args.out / "body.png", optimize=True)
     normalatlas.save(args.out / "normals.png", optimize=True)
-    pikeatlas.save(args.out / "pikes.png", optimize=True)
+    if pikeatlas:
+        pikeatlas.save(args.out / "pikes.png", optimize=True)
+    elif (args.out / "pikes.png").is_file():
+        (args.out / "pikes.png").unlink()
     (args.out / "character.json").write_text(json.dumps(document, separators=(",", ":")) + "\n", encoding="utf-8", newline="\n")
     report = {"frames": len(entries), "sourceFolder": str(args.source), "sourceSHA256": metadata.get("source_sha256"), "sourceManifestsSHA256": source_hashes,
-              "bodyAtlasSize": list(bodyatlas.size), "normalAtlasSize": list(normalatlas.size), "pikeAtlasSize": list(pikeatlas.size),
+              "bodyAtlasSize": list(bodyatlas.size), "normalAtlasSize": list(normalatlas.size), "pikeAtlasSize": list(pikeatlas.size) if pikeatlas else None,
+              "clips": {name: {key: value for key, value in clip.items() if key != "directions"} | {"directionCount": len(clip["directions"])} for name, clip in clips.items()},
               "normalSpace": document["normalSpace"], "normalEncoding": document["normalEncoding"], "normalResampling": "coverage-weighted linear vectors, renormalized after filter, 4px transparent RGB dilation",
               "bodyTexelArea": sum(e["body"].width * e["body"].height for e in entries), "pikeTexelArea": sum(e["pike"].width * e["pike"].height for e in pikentries),
-              "orderedOwnerMaskOperations": sum(len(e["source"].get("attachments", {}).get("pike", {}).get("operations", [])) for e in entries),
-              "geometrySource": "sprite-studio/web/pike.mjs:pikeGeometry", "previousAssetsBackup": str(backup) if backup else None, "checks": checks}
-    preview(entries, args.out, lighting)
+              "orderedOwnerMaskOperations": sum(len((e["source"].get("attachments", {}).get("pike") or {}).get("operations", [])) for e in entries),
+              "geometrySource": "sprite-studio/web/pike.mjs:pikeGeometry" if pikentries else None, "previousAssetsBackup": str(backup) if backup else None, "checks": checks}
+    preview(entries, args.out, lighting, clips)
     (args.out / "build_report.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8", newline="\n")
+    if args.registry:
+        update_registry(args.registry, args.out, args.character_id, args.label, args.role)
     print(json.dumps(report, indent=2))
 
 

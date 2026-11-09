@@ -1,0 +1,102 @@
+{
+  "frames": 2112,
+  "sourceFolder": "assets\\musketeer\\sprite_exports\\V2_Pikeman_20261012",
+  "sourceSHA256": "3387e989568668e5d46eda7881387ff0a1af60a1a331a7c584da076486c3d1d4",
+  "sourceManifestsSHA256": {
+    "sprites.json": "e5da104ad6ed8a2282ffb6ece032280a04a17e5c1593b0fd4e872edb6fe52c69"
+  },
+  "bodyAtlasSize": [
+    2048,
+    4096
+  ],
+  "normalAtlasSize": [
+    2048,
+    4096
+  ],
+  "pikeAtlasSize": [
+    2048,
+    4096
+  ],
+  "clips": {
+    "idle1": {
+      "duration": 4.0,
+      "kind": "idle",
+      "frameCount": 24,
+      "action": "Ilde1",
+      "directionCount": 16
+    },
+    "idle2": {
+      "duration": 4.0,
+      "kind": "idle",
+      "frameCount": 24,
+      "action": "Ilde2",
+      "directionCount": 16
+    },
+    "idle3": {
+      "duration": 4.0,
+      "kind": "idle",
+      "frameCount": 24,
+      "action": "Ilde3",
+      "directionCount": 16
+    },
+    "run_3m1": {
+      "duration": 2.0,
+      "kind": "walk",
+      "frameCount": 12,
+      "action": "Run_3m1",
+      "gait": "run",
+      "nominalSpeed": 3.0,
+      "directionCount": 16
+    },
+    "walk_0_5m1": {
+      "duration": 2.0,
+      "kind": "walk",
+      "frameCount": 12,
+      "action": "Walk_0.5m1",
+      "gait": "walk",
+      "nominalSpeed": 0.5,
+      "directionCount": 16
+    },
+    "walk_1_5m1": {
+      "duration": 2.0,
+      "kind": "walk",
+      "frameCount": 12,
+      "action": "Walk_1.5m1",
+      "gait": "walk",
+      "nominalSpeed": 1.5,
+      "directionCount": 16
+    },
+    "walk_1_5m2": {
+      "duration": 2.0,
+      "kind": "walk",
+      "frameCount": 12,
+      "action": "Walk_1.5m2",
+      "gait": "walk",
+      "nominalSpeed": 1.5,
+      "directionCount": 16
+    },
+    "walk_1_5m3": {
+      "duration": 2.0,
+      "kind": "walk",
+      "frameCount": 12,
+      "action": "Walk_1.5m3",
+      "gait": "walk",
+      "nominalSpeed": 1.5,
+      "directionCount": 16
+    }
+  },
+  "normalSpace": "actor-blender-world",
+  "normalEncoding": "RGB8-linear-signed",
+  "normalResampling": "coverage-weighted linear vectors, renormalized after filter, 4px transparent RGB dilation",
+  "bodyTexelArea": 4984420,
+  "pikeTexelArea": 3337824,
+  "orderedOwnerMaskOperations": 3671,
+  "geometrySource": "sprite-studio/web/pike.mjs:pikeGeometry",
+  "previousAssetsBackup": null,
+  "checks": {
+    "pairedFrameAlignment": 2112,
+    "checkedPikeFrames": 2112,
+    "unitNormalErrorMax": 0.008,
+    "preservedInkOnlyPixels": 3840
+  }
+}

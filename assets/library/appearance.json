@@ -1,0 +1,10 @@
+{
+  "schema": "walking-fortress-pike-appearance-v1",
+  "versions": {
+    "pikeman:bundled": {
+      "darkness": 0.0,
+      "opacity": 2.0,
+      "widthScale": 1.39
+    }
+  }
+}

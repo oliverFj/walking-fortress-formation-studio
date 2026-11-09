@@ -1,0 +1,11 @@
+schema_version = "1.0.0"
+id = "wf_ink_sprite"
+version = "0.3.0"
+name = "Walking Fortress – Stregstil"
+tagline = "Enkel basisfarve, kraftige konturer og udvalgte foldstreger"
+maintainer = "Walking Fortress"
+type = "add-on"
+tags = ["Material", "Render", "Object"]
+blender_version_min = "5.2.0"
+license = ["SPDX:GPL-3.0-or-later"]
+

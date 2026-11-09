@@ -1,0 +1,34 @@
+{
+  "frames": 432,
+  "sourceFolder": "assets\\musketeer\\sprite_exports\\Pikener_normals_20261008_151700",
+  "sourceSHA256": "4f9e8dcefc6f79cf569edaff4cf5ec21c1790402f4f1f71c9032ca98c2d46ab9",
+  "sourceManifestsSHA256": {
+    "sprites.json": "42438ba7fff0a47310d563dbd442d30e4ea666d36588dc7cab6e38290e0c6237"
+  },
+  "bodyAtlasSize": [
+    1024,
+    2048
+  ],
+  "normalAtlasSize": [
+    1024,
+    2048
+  ],
+  "pikeAtlasSize": [
+    1024,
+    2048
+  ],
+  "normalSpace": "actor-blender-world",
+  "normalEncoding": "RGB8-linear-signed",
+  "normalResampling": "coverage-weighted linear vectors, renormalized after filter, 4px transparent RGB dilation",
+  "bodyTexelArea": 1143171,
+  "pikeTexelArea": 705267,
+  "orderedOwnerMaskOperations": 757,
+  "geometrySource": "sprite-studio/web/pike.mjs:pikeGeometry",
+  "previousAssetsBackup": "E:\\AI projekter\\Walking Fortress 0.2\\formation-studio\\assets\\versions\\ink-baked-v1_20261008_115558",
+  "checks": {
+    "pairedFrameAlignment": 432,
+    "unitNormalErrorMax": 0.008,
+    "preservedInkOnlyPixels": 88,
+    "matchedPreviousFeetAndPikeCoordinates": true
+  }
+}

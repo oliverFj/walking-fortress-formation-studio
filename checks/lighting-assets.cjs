@@ -16,7 +16,7 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const pat
         const heading=document.createElement('h2');heading.textContent=spec.title;heading.style.cssText='font:20px Georgia;margin:4px 0 6px';card.append(heading);
         const label=document.createElement('p');label.textContent='To pikenerer med modsat front. Samme verdensfaste sol.';label.style.cssText='font:14px sans-serif;margin:0 0 12px';card.append(label);
         const canvas=document.createElement('canvas');canvas.style.cssText='width:100%;height:670px;border-radius:6px;display:block';card.append(canvas);holder.append(card);
-        const renderer=new Renderer(canvas);await renderer.loadAssets('assets/character.json');
+        const renderer=new Renderer(canvas);await renderer.loadAssets('assets/characters.json');
         renderer.setCamera({yaw:spec.yaw*Math.PI/180,zoom:10,centerX:-Math.sin(spec.yaw*Math.PI/180)*2.2,centerZ:Math.cos(spec.yaw*Math.PI/180)*2.2});
         const snapshot={terrain:'flat',time:0,formations:[],soldiers:[{x:-1.7,z:0,heading:0,phase:0,role:'pike',moving:false},{x:1.7,z:0,heading:Math.PI,phase:0,role:'pike',moving:false}]};
         renderer.draw(snapshot,{showFields:false,showTargets:false,showPikes:true,lighting:{...renderer.assets.data.lighting,azimuth:spec.azimuth}});
@@ -36,3 +36,4 @@ const assert=require('node:assert/strict');const fs=require('node:fs');const pat
     const report={result:'passed',checks:result,errors};fs.writeFileSync(path.join(__dirname,'lighting-assets-report.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report));
   } finally {await browser.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});
+

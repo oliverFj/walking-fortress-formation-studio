@@ -26,7 +26,14 @@ from studio_blender import file_digest
 def write_json(path, value):
     temporary = path.with_suffix(path.suffix + '.tmp')
     temporary.write_text(json.dumps(value, indent=2, ensure_ascii=False) + '\n', encoding='utf-8')
-    temporary.replace(path)
+    for attempt in range(20):
+        try:
+            temporary.replace(path)
+            break
+        except PermissionError:
+            if attempt == 19:
+                raise
+            time.sleep(0.05)
 
 
 def scale_attachment(pike, scale):
@@ -149,7 +156,14 @@ def main(options):
         (output/directory).mkdir(exist_ok=True)
     source_hash = file_digest(source_path)
     signature = hashlib.sha256((source_hash+file_digest(options.manifest)+str(pixels)+'normal-export-v1').encode()).hexdigest()
-    state_path = output/'render_state.json'
+    shard_count = getattr(options, 'shard_count', 1)
+    shard_index = getattr(options, 'shard_index', 0)
+    if shard_count < 1 or not 0 <= shard_index < shard_count:
+        raise ValueError('shard_index must be within shard_count.')
+    sharded = shard_count > 1
+    work_output = output/'shards'/str(shard_count)/str(shard_index) if sharded else output
+    work_output.mkdir(parents=True, exist_ok=True)
+    state_path = work_output/'render_state.json'
     if state_path.exists():
         state = json.loads(state_path.read_text(encoding='utf-8'))
         if state.get('signature') != signature:
@@ -168,12 +182,43 @@ def main(options):
         'ink_srgb': _srgb_hex(ink.ink_color), 'base_srgb': _srgb_hex(ink.base_color),
         'source_shadow_mode': ink.shadow_mode,
     })
-    write_json(output/'sprites.json', manifest)
-    write_json(state_path, state)
     pairs = [(clip, direction, frame) for clip in manifest['clips'] for direction in clip['directions'] for frame in direction['frames']]
     if options.smoke:
-        pairs = [p for p in pairs if p[0]['name']=='walk' and p[1]['index'] in (0,4,8,12) and p[2]['index']==0]
+        pairs = [p for p in pairs if p[0].get('kind',p[0]['name'])=='walk' and p[1]['index'] in (0,4,8,12) and p[2]['index']==0]
+    if sharded:
+        pairs = [pair for index, pair in enumerate(pairs) if index % shard_count == shard_index]
+        # Each worker owns a disjoint set of images and state files. Import
+        # records from interrupted exports, but validate every reused image.
+        assigned = {frame[pass_name] for _, _, frame in pairs for pass_name in ('albedo', 'normal')}
+        for previous_path in [output/'render_state.json', *sorted((output/'shards').glob('*/*/render_state.json'))]:
+            if previous_path == state_path or not previous_path.is_file():
+                continue
+            previous = json.loads(previous_path.read_text(encoding='utf-8'))
+            if previous.get('signature') != signature:
+                raise ValueError('A resume state belongs to another model or rendering configuration.')
+            state['completed'].update({name: record for name, record in previous['completed'].items() if name in assigned})
+        state['completed'] = {name: record for name, record in state['completed'].items() if name in assigned}
+        state.update(shard_count=shard_count, shard_index=shard_index)
+    else:
+        write_json(output/'sprites.json', manifest)
+    write_json(state_path, state)
     total = len(pairs)
+    # Reused pairs need no pose evaluation or camera update. Checking them
+    # first makes a near-complete interrupted export cheap to resume.
+    completed_pairs, pending = 0, []
+    for pair in pairs:
+        frame = pair[2]
+        if all(valid_pair_record(output/frame[name], state['completed'].get(frame[name]), pixels) for name in ('albedo', 'normal')):
+            path = output/frame['normal']
+            if strip_normal_png_tags(path):
+                state['completed'][frame['normal']] = {'size':path.stat().st_size, 'sha256':file_digest(path)}
+            completed_pairs += 1
+        else:
+            pending.append(pair)
+    pairs = pending
+    write_json(state_path, state)
+    write_json(work_output/'progress.json', {'completed_pairs':completed_pairs,'total_pairs':total,'elapsed_seconds':0,'smoke':options.smoke,
+                                            'shard_count':shard_count,'shard_index':shard_index})
     scene = bpy.data.scenes.new('__WF_RELIGHT_EXPORT__')
     camera = camera_data = lines = normal = None
     visibility = []
@@ -288,11 +333,15 @@ def main(options):
                     state['completed'][relative]={'size':path.stat().st_size,'sha256':file_digest(path)}
                     write_json(state_path,state)
                 elapsed=time.monotonic()-start
-                print(f'WF_RELIGHT_PROGRESS {i+1}/{total} {clip["name"]} direction{direction["index"]} frame{frame["index"]} elapsed={elapsed:.1f}s', flush=True)
-                write_json(output/'progress.json', {'completed_pairs':i+1,'total_pairs':total,'elapsed_seconds':elapsed,'smoke':options.smoke})
+                print(f'WF_RELIGHT_PROGRESS {completed_pairs+i+1}/{total} {clip["name"]} direction{direction["index"]} frame{frame["index"]} elapsed={elapsed:.1f}s', flush=True)
+                write_json(work_output/'progress.json', {'completed_pairs':completed_pairs+i+1,'total_pairs':total,'elapsed_seconds':elapsed,'smoke':options.smoke,
+                                                        'shard_count':shard_count,'shard_index':shard_index})
         manifest['render_summary']={'frames':total,'passes':2,'smoke':options.smoke,'seconds':time.monotonic()-start}
-        write_json(output/'sprites.json',manifest)
-        if not options.smoke:
+        if sharded:
+            write_json(work_output/'complete.json', {'signature':signature, **manifest['render_summary']})
+        else:
+            write_json(output/'sprites.json',manifest)
+        if not options.smoke and not sharded:
             (output/'READY').write_text('Paired albedo and actor-space normal frames complete.\n',encoding='utf-8')
         print('WF_RELIGHT_COMPLETE '+str(output),flush=True)
     finally:
@@ -328,6 +377,8 @@ if __name__ == '__main__':
     parser.add_argument('--output',type=Path,required=True)
     parser.add_argument('--pixels',type=int,default=256)
     parser.add_argument('--smoke',action='store_true')
+    parser.add_argument('--shard-count',type=int,default=1)
+    parser.add_argument('--shard-index',type=int,default=0)
     argv=sys.argv[sys.argv.index('--')+1:] if '--' in sys.argv else []
     OPTIONS=parser.parse_args(argv)
     main(OPTIONS)
